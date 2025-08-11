@@ -1,31 +1,87 @@
 import os
-from dotenv import load_dotenv
 import telebot
 from telebot import types
 from apscheduler.schedulers.background import BackgroundScheduler
 import random
 import string
-import jdatetime
-
-load_dotenv()  # بارگذاری متغیرهای محیطی از فایل .env
+import datetime
 
 TOKEN = os.getenv("BOT_TOKEN")
-if not TOKEN:
-    raise ValueError("توکن ربات در فایل .env با کلید BOT_TOKEN تعریف نشده است!")
-
 CHANNEL_ID = -1001657777927  # آیدی عددی کانال
 
 bot = telebot.TeleBot(TOKEN)
 user_data = {}
 group_ids = set()
 
+# تعریف ماه‌های شمسی به فارسی
+jalali_months_fa = [
+    "فروردین", "اردیبهشت", "خرداد", "تیر",
+    "مرداد", "شهریور", "مهر", "آبان",
+    "آذر", "دی", "بهمن", "اسفند"
+]
+
+# معادل فارسی روزهای هفته
+weekdays_fa = {
+    "Saturday": "شنبه",
+    "Sunday": "یک‌شنبه",
+    "Monday": "دوشنبه",
+    "Tuesday": "سه‌شنبه",
+    "Wednesday": "چهارشنبه",
+    "Thursday": "پنج‌شنبه",
+    "Friday": "جمعه"
+}
+
+# تابع تبدیل تاریخ میلادی به شمسی
+def gregorian_to_jalali(g_y, g_m, g_d):
+    g_days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    j_days_in_month = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29]
+
+    gy = g_y - 1600
+    gm = g_m - 1
+    gd = g_d - 1
+
+    g_day_no = 365 * gy + (gy + 3) // 4 - (gy + 99) // 100 + (gy + 399) // 400
+    for i in range(gm):
+        g_day_no += g_days_in_month[i]
+    g_day_no += gd
+
+    j_day_no = g_day_no - 79
+
+    j_np = j_day_no // 12053
+    j_day_no %= 12053
+
+    jy = 979 + 33 * j_np + 4 * (j_day_no // 1461)
+    j_day_no %= 1461
+
+    if j_day_no >= 366:
+        jy += (j_day_no - 1) // 365
+        j_day_no = (j_day_no - 1) % 365
+
+    for i in range(11):
+        if j_day_no < j_days_in_month[i]:
+            jm = i + 1
+            jd = j_day_no + 1
+            break
+        j_day_no -= j_days_in_month[i]
+    else:
+        jm = 12
+        jd = j_day_no + 1
+
+    return jy, jm, jd
+
+def get_jalali_date_fa():
+    now = datetime.datetime.now()
+    weekday_en = now.strftime('%A')
+    jy, jm, jd = gregorian_to_jalali(now.year, now.month, now.day)
+    weekday_fa = weekdays_fa.get(weekday_en, weekday_en)
+    return f"{weekday_fa} {jd} {jalali_months_fa[jm - 1]} {jy}"
+
 def send_poll_to_groups():
     for gid in group_ids:
         try:
             bot.send_message(gid, "📢 نظرسنجی هفتگی آغاز شد!\nبرای ثبت نظر، لطفاً به ربات پیام خصوصی بده.")
-            print(f"✅ پیام نظرسنجی به گروه {gid} ارسال شد.")
         except Exception as e:
-            print(f"❌ خطا در ارسال پیام به گروه {gid}: {e}")
+            print(f"خطا در ارسال پیام به گروه {gid}: {e}")
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(send_poll_to_groups, 'cron', day_of_week='fri', hour=18, minute=0)
@@ -39,7 +95,6 @@ def handle_start(message):
         bot.send_message(chat_id, "سلام! 👋\nآیا می‌خوای نظرت با اسم ثبت بشه؟ (بله / نه)")
     else:
         group_ids.add(chat_id)
-        print(f"✅ گروه با آی‌دی {chat_id} ثبت شد.")
 
 @bot.message_handler(func=lambda m: m.chat.type == 'private')
 def handle_private(message):
@@ -92,9 +147,7 @@ def handle_private(message):
 
         info = user_data[chat_id]
         code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
-        now = jdatetime.date.today()
-        weekday = now.strftime('%A')
-        date_fa = f"{weekday} {now.day} {now.j_months_fa[now.month - 1]} {now.year}"
+        date_fa = get_jalali_date_fa()
 
         name_line = f"🧒 اسم دانش آموز: {info['name']}" if not info['anon'] else "🧒 اسم دانش آموز: (ناشناس)"
         province_line = f"🏘 استان: {info['province']}" if not info['anon'] else "🏘 استان: ---"
