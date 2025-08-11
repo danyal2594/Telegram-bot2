@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 import telebot
 from telebot import types
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -6,8 +7,14 @@ import random
 import string
 import datetime
 
-TOKEN = os.getenv("8149619980:AAG7SGYbXcXdgFX2oAG97puiw9N0JtCFY5k")
-CHANNEL_ID = -1001657777927  # آیدی عددی کانال
+# بارگذاری متغیرهای محیطی از فایل .env
+load_dotenv()
+
+TOKEN = os.getenv("BOT_TOKEN")
+if not TOKEN:
+    raise Exception("توکن ربات در متغیر محیطی BOT_TOKEN تعریف نشده است!")
+
+CHANNEL_ID = -1001657777927  # آیدی عددی کانال شما
 
 bot = telebot.TeleBot(TOKEN)
 user_data = {}
@@ -187,4 +194,3 @@ def handle_groups(message):
 if __name__ == "__main__":
     print("✅ ربات با موفقیت اجرا شد...")
     bot.infinity_polling()
-
