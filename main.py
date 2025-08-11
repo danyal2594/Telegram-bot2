@@ -6,7 +6,7 @@ import random
 import string
 import datetime
 
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = os.getenv("8149619980:AAG7SGYbXcXdgFX2oAG97puiw9N0JtCFY5k")
 CHANNEL_ID = -1001657777927  # آیدی عددی کانال
 
 bot = telebot.TeleBot(TOKEN)
@@ -187,3 +187,4 @@ def handle_groups(message):
 if __name__ == "__main__":
     print("✅ ربات با موفقیت اجرا شد...")
     bot.infinity_polling()
+
